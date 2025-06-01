@@ -76,6 +76,7 @@
     <button onclick="createAccount()">Account toevoegen</button>
     <button onclick="renderAccounts()">🔄 Herlaad kaarten</button>
     <button onclick="uploadToGitHub()">⬆️ Upload naar GitHub</button>
+    <button onclick="loadFromGitHub()">⬇️ Laad van GitHub</button>
 
     <h2>Bestaande Accounts</h2>
     <div id="accountList"></div>
@@ -119,6 +120,22 @@
       } else {
         alert("Upload mislukt.");
       }
+    }
+
+    async function loadFromGitHub() {
+      const token = document.getElementById('githubToken').value.trim();
+      if (!token) return alert("Voer een GitHub token in.");
+
+      const res = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+        headers: { Authorization: `token ${token}` }
+      });
+
+      if (!res.ok) return alert("Laden mislukt van GitHub.");
+      const data = await res.json();
+      const content = JSON.parse(decodeURIComponent(escape(atob(data.content))));
+      saveUsers(content.users);
+      saveProgress(content.progress);
+      renderAccounts();
     }
 
     function getUsers() {
