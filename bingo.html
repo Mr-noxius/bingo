@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bingo Spel</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #fafafa;
+    margin: 0;
+    padding: 2rem;
+  }
+  h1 {
+    color: #2d3436;
+    text-align: center;
+  }
+  #logoutBtn {
+    background: #d63031;
+    color: white;
+    border: none;
+    padding: 0.7rem 1.2rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    margin-bottom: 1rem;
+    display: block;
+    margin-left: auto;
+  }
+  .bingo-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .bingo-cell {
+    background: #74b9ff;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+    border-radius: 10px;
+    user-select: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+  }
+  .bingo-cell.marked {
+    background-color: #0984e3;
+    text-decoration: line-through;
+  }
+</style>
+</head>
+<body>
+
+<script>
+  // Check login (niet dev)
+  const loggedUser = localStorage.getItem('loggedInUser');
+  if (!loggedUser || loggedUser === 'dev') {
+    window.location.href = 'index.html';
+  }
+</script>
+
+<h1>Welkom bij Bingo, <span id="usernameDisplay"></span>!</h1>
+<button id="logoutBtn">Uitloggen</button>
+
+<div class="bingo-grid" id="bingoGrid">
+  <!-- Bingo vakjes worden hier geladen -->
+</div>
+
+<script>
+  const username = localStorage.getItem('loggedInUser');
+  document.getElementById('usernameDisplay').textContent = username;
+
+  const users = JSON.parse(localStorage.getItem('bingoUsers') || '[]');
+  const progress = JSON.parse(localStorage.getItem('bingoProgress') || '{}');
+
+  const userData = users.find(u => u.username === username);
+  if (!userData) {
+    alert("Gebruiker niet gevonden. Je wordt uitgelogd.");
+    localStorage.removeItem('loggedInUser');
+    window.location.href = 'index.html';
+  }
+
+  const bingoGrid = document.getElementById('bingoGrid');
+
+  function renderGrid() {
+    bingoGrid.innerHTML = '';
+    userData.kaart.forEach((tekst, idx) => {
+      const cell = document.createElement('div');
+      cell.className = 'bingo-cell';
+      cell.textContent = tekst;
+      if(progress[username]?.includes(idx)) {
+        cell.classList.add('marked');
+      }
+      cell.onclick = () => toggleMark(idx, cell);
+      bingoGrid.appendChild(cell);
+    });
+  }
+
+  function toggleMark(idx, cell) {
+    progress[username] = progress[username] || [];
+    const i = progress[username].indexOf(idx);
+    if (i === -1) {
+      progress[username].push(idx);
+      cell.classList.add('marked');
+    } else {
+      progress[username].splice(i, 1);
+      cell.classList.remove('marked');
+    }
+    localStorage.setItem('bingoProgress', JSON.stringify(progress));
+  }
+
+  renderGrid();
+
+  document.getElementById('logoutBtn').onclick = () => {
+    localStorage.removeItem('loggedInUser');
+    window.location.href = 'index.html';
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Developer Paneel - Bingo Beheer via GitHub API</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5ff;
+    margin: 0; padding: 2rem;
+  }
+  h1 {
+    text-align: center; color: #6c5ce7;
+  }
+  .container {
+    max-width: 900px; margin: auto;
+    background: white; padding: 2rem;
+    border-radius: 1rem; box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+  input, button {
+    width: 100%; margin: 0.5rem 0;
+    padding: 0.75rem; font-size: 1rem;
+    border-radius: 0.5rem; border: 1px solid #ccc;
+  }
+  button {
+    background-color: #6c5ce7;
+    color: white; border: none;
+    cursor: pointer;
+  }
+  .account {
+    border: 1px solid #ccc;
+    padding: 1rem; border-radius: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .bingo-preview {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 5px; margin-top: 1rem;
+  }
+  .vakje {
+    padding: 0.5rem; background-color: #dfe6e9;
+    border-radius: 6px; text-align: center;
+    font-weight: bold;
+  }
+  .grid-inputs {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+    margin-bottom: 1rem;
+  }
+  .grid-inputs input {
+    width: 100%;
+    padding: 0.5rem;
+    text-align: center;
+  }
+  .notification {
+    background-color: #ffeaa7;
+    padding: 1rem;
+    margin-top: 1rem;
+    border-left: 6px solid #fdcb6e;
+    border-radius: 0.5rem;
+    font-weight: bold;
+  }
+  #tokenInput {
+    margin-bottom: 1rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>Developer Paneel - Bingo Beheer via GitHub API</h1>
+<div class="container">
+
+  <label for="tokenInput"><strong>GitHub Personal Access Token:</strong></label>
+  <input type="password" id="tokenInput" placeholder="Voer je GitHub token in" />
+  <button id="btnLoadData">Data laden</button>
+
+  <div id="mainContent" style="display:none;">
+    <h2>Account aanmaken</h2>
+    <input type="text" id="newUsername" placeholder="Gebruikersnaam" />
+    <input type="password" id="newPassword" placeholder="Wachtwoord" />
+    <div class="grid-inputs" id="vakInputen"></div>
+    <button onclick="createAccount()">Account toevoegen</button>
+
+    <h2>Bestaande Accounts</h2>
+    <div id="accountList"></div>
+    <div id="notifications"></div>
+  </div>
+
+</div>
+
+<script>
+  // ---- Config ----
+  const owner = 'Mr-noxius';       // pas dit aan
+  const repo = 'bingo';               // pas dit aan
+  const usersFilePath = 'bingoUsers.json';
+  const progressFilePath = 'bingoProgress.json';
+
+  // State
+  let githubToken = null;
+  let users = [];
+  let usersFileSha = null;
+  let progress = {};
+  let progressFileSha = null;
+
+  // --- GitHub API helpers ---
+
+  async function githubGetFile(path) {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+      headers: { Authorization: 'token ' + githubToken }
+    });
+    if(!res.ok) throw new Error(`Kan ${path} niet laden: ${res.statusText}`);
+    return await res.json();
+  }
+
+  async function githubPutFile(path, contentStr, sha, message) {
+    const body = {
+      message,
+      content: btoa(unescape(encodeURIComponent(contentStr))),
+      sha
+    };
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+      method: 'PUT',
+      headers: { 
+        Authorization: 'token ' + githubToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if(!res.ok) throw new Error(`Kan ${path} niet opslaan: ${res.statusText}`);
+    return await res.json();
+  }
+
+  // --- UI helpers ---
+
+  function showNotification(message) {
+    const notifications = document.getElementById("notifications");
+    const div = document.createElement("div");
+    div.className = "notification";
+    div.textContent = message;
+    notifications.appendChild(div);
+    setTimeout(() => div.remove(), 4000);
+  }
+
+  function generateVakjesInput() {
+    const container = document.getElementById("vakInputen");
+    container.innerHTML = '';
+    for(let i=0; i<25; i++) {
+      const input = document.createElement("input");
+      input.id = `vakje${i}`;
+      input.placeholder = `Vakje ${i+1}`;
+      container.appendChild(input);
+    }
+  }
+
+  function renderAccounts() {
+    const list = document.getElementById("accountList");
+    list.innerHTML = "";
+    users.forEach(user => {
+      const div = document.createElement("div");
+      div.className = "account";
+      div.innerHTML = `<h3>👤 ${user.username}</h3>`;
+      const preview = document.createElement("div");
+      preview.className = "bingo-preview";
+      user.kaart.forEach((k, index) => {
+        const vakje = document.createElement("div");
+        vakje.className = "vakje";
+        vakje.textContent = k;
+        vakje.style.backgroundColor = progress[user.username]?.includes(index) ? "#81ecec" : "#dfe6e9";
+        preview.appendChild(vakje);
+      });
+      div.appendChild(preview);
+      list.appendChild(div);
+    });
+  }
+
+  // --- Actions ---
+
+  async function loadData() {
+    try {
+      document.getElementById("mainContent").style.display = "none";
+      users = [];
+      progress = {};
+      usersFileSha = null;
+      progressFileSha = null;
+
+      const usersData = await githubGetFile(usersFilePath);
+      usersFileSha = usersData.sha;
+      users = JSON.parse(atob(usersData.content));
+
+      const progressData = await githubGetFile(progressFilePath);
+      progressFileSha = progressData.sha;
+      progress = JSON.parse(atob(progressData.content));
+
+      generateVakjesInput();
+      renderAccounts();
+      document.getElementById("mainContent").style.display = "block";
+      showNotification("Data succesvol geladen!");
+    } catch (err) {
+      alert("Fout bij laden data: " + err.message);
+    }
+  }
+
+  async function saveUsers() {
+    const contentStr = JSON.stringify(users, null, 2);
+    const res = await githubPutFile(usersFilePath, contentStr, usersFileSha, "Update bingoUsers via dev paneel");
+    usersFileSha = res.content.sha;
+  }
+
+  async function saveProgress() {
+    const contentStr = JSON.stringify(progress, null, 2);
+    const res = await githubPutFile(progressFilePath, contentStr, progressFileSha, "Update bingoProgress via dev paneel");
+    progressFileSha = res.content.sha;
+  }
+
+  async function createAccount() {
+    const username = document.getElementById("newUsername").value.trim();
+    const password = document.getElementById("newPassword").value;
+    const kaart = [];
+
+    for(let i=0; i<25; i++) {
+      const val = document.getElementById(`vakje${i}`).value.trim();
+      kaart.push(val || "");
+    }
+
+    if(!username || !password || kaart.some(w => !w)) {
+      alert("Vul alle velden in, inclusief 25 vakjes.");
+      return;
+    }
+
+    if(users.find(u => u.username === username)) {
+      alert("Gebruikersnaam bestaat al.");
+      return;
+    }
+
+    users.push({ username, password, kaart });
+    progress[username] = [];
+
+    try {
+      await saveUsers();
+      await saveProgress();
+      renderAccounts();
+      showNotification(`Account ${username} toegevoegd en opgeslagen.`);
+      // Clear inputs
+      document.getElementById("newUsername").value = "";
+      document.getElementById("newPassword").value = "";
+      for(let i=0; i<25; i++) {
+        document.getElementById(`vakje${i}`).value = "";
+      }
+    } catch(err) {
+      alert("Fout bij opslaan: " + err.message);
+    }
+  }
+
+  // Init
+  document.getElementById("btnLoadData").addEventListener("click", () => {
+    const tokenField = document.getElementById("tokenInput");
+    if(!tokenField.value.trim()) {
+      alert("Voer eerst je GitHub token in!");
+      return;
+    }
+    githubToken = tokenField.value.trim();
+    loadData();
+  });
+</script>
+
+</body>
+</html>
