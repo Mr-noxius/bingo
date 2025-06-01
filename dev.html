@@ -61,47 +61,69 @@
     border-radius: 0.5rem;
     font-weight: bold;
   }
-  #tokenInput {
-    margin-bottom: 1rem;
-  }
 </style>
 </head>
 <body>
 
 <h1>Developer Paneel - Bingo Beheer via GitHub API</h1>
-<div class="container">
+<div class="container" id="loginContainer">
+  <h2>Login</h2>
+  <input type="text" id="loginUsername" placeholder="Gebruikersnaam" />
+  <input type="password" id="loginPassword" placeholder="Wachtwoord" />
+  <button id="loginBtn">Inloggen</button>
+  <div id="loginError" style="color:red; margin-top:0.5rem;"></div>
+</div>
 
+<div class="container" id="mainContainer" style="display:none;">
   <label for="tokenInput"><strong>GitHub Personal Access Token:</strong></label>
   <input type="password" id="tokenInput" placeholder="Voer je GitHub token in" />
   <button id="btnLoadData">Data laden</button>
 
-  <div id="mainContent" style="display:none;">
+  <div id="content" style="display:none;">
     <h2>Account aanmaken</h2>
     <input type="text" id="newUsername" placeholder="Gebruikersnaam" />
     <input type="password" id="newPassword" placeholder="Wachtwoord" />
     <div class="grid-inputs" id="vakInputen"></div>
-    <button onclick="createAccount()">Account toevoegen</button>
+    <button id="btnAddAccount">Account toevoegen</button>
 
     <h2>Bestaande Accounts</h2>
     <div id="accountList"></div>
     <div id="notifications"></div>
   </div>
-
 </div>
 
 <script>
-  // ---- Config ----
-  const owner = 'Mr-noxius';       // pas dit aan
-  const repo = 'bingo';               // pas dit aan
+  // --- Config ---
+  const owner = 'JOUW_GITHUB_USERNAME';  // aanpassen
+  const repo = 'JOUW_REPO_NAAM';          // aanpassen
   const usersFilePath = 'bingoUsers.json';
   const progressFilePath = 'bingoProgress.json';
 
-  // State
+  // --- State ---
   let githubToken = null;
   let users = [];
   let usersFileSha = null;
   let progress = {};
   let progressFileSha = null;
+  let refreshInterval = null;
+
+  // --- Login ---
+  const loginContainer = document.getElementById('loginContainer');
+  const mainContainer = document.getElementById('mainContainer');
+  const loginError = document.getElementById('loginError');
+
+  document.getElementById('loginBtn').addEventListener('click', () => {
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    if(username === 'dev' && password === 'dev') {
+      loginContainer.style.display = 'none';
+      mainContainer.style.display = 'block';
+      loginError.textContent = '';
+    } else {
+      loginError.textContent = 'Ongeldige gebruikersnaam of wachtwoord.';
+    }
+  });
 
   // --- GitHub API helpers ---
 
@@ -132,7 +154,6 @@
   }
 
   // --- UI helpers ---
-
   function showNotification(message) {
     const notifications = document.getElementById("notifications");
     const div = document.createElement("div");
@@ -178,7 +199,7 @@
 
   async function loadData() {
     try {
-      document.getElementById("mainContent").style.display = "none";
+      document.getElementById("content").style.display = "none";
       users = [];
       progress = {};
       usersFileSha = null;
@@ -194,7 +215,7 @@
 
       generateVakjesInput();
       renderAccounts();
-      document.getElementById("mainContent").style.display = "block";
+      document.getElementById("content").style.display = "block";
       showNotification("Data succesvol geladen!");
     } catch (err) {
       alert("Fout bij laden data: " + err.message);
@@ -213,55 +234,61 @@
     progressFileSha = res.content.sha;
   }
 
-  async function createAccount() {
+  async function addAccount() {
     const username = document.getElementById("newUsername").value.trim();
     const password = document.getElementById("newPassword").value;
     const kaart = [];
-
     for(let i=0; i<25; i++) {
       const val = document.getElementById(`vakje${i}`).value.trim();
       kaart.push(val || "");
     }
-
     if(!username || !password || kaart.some(w => !w)) {
       alert("Vul alle velden in, inclusief 25 vakjes.");
       return;
     }
-
     if(users.find(u => u.username === username)) {
       alert("Gebruikersnaam bestaat al.");
       return;
     }
-
-    users.push({ username, password, kaart });
+    users.push({username, password, kaart});
     progress[username] = [];
-
     try {
       await saveUsers();
       await saveProgress();
       renderAccounts();
-      showNotification(`Account ${username} toegevoegd en opgeslagen.`);
-      // Clear inputs
       document.getElementById("newUsername").value = "";
       document.getElementById("newPassword").value = "";
       for(let i=0; i<25; i++) {
         document.getElementById(`vakje${i}`).value = "";
       }
+      showNotification("Account succesvol toegevoegd en opgeslagen!");
     } catch(err) {
       alert("Fout bij opslaan: " + err.message);
     }
   }
 
-  // Init
+  // --- Eventlisteners ---
+
   document.getElementById("btnLoadData").addEventListener("click", () => {
-    const tokenField = document.getElementById("tokenInput");
-    if(!tokenField.value.trim()) {
-      alert("Voer eerst je GitHub token in!");
+    githubToken = document.getElementById("tokenInput").value.trim();
+    if(!githubToken) {
+      alert("Voer een geldige GitHub token in.");
       return;
     }
-    githubToken = tokenField.value.trim();
     loadData();
+    if(refreshInterval) clearInterval(refreshInterval);
+    refreshInterval = setInterval(() => {
+      loadData();
+    }, 10000);
   });
+
+  document.getElementById("btnAddAccount").addEventListener("click", () => {
+    addAccount();
+  });
+
+  // --- Init ---
+  generateVakjesInput();
+
 </script>
 
 </body>
