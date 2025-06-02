@@ -1,122 +1,223 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Bingo Spel</title>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    background-color: #fafafa;
-    margin: 0;
-    padding: 2rem;
-  }
-  h1 {
-    color: #2d3436;
-    text-align: center;
-  }
-  #logoutBtn {
-    background: #d63031;
-    color: white;
-    border: none;
-    padding: 0.7rem 1.2rem;
-    border-radius: 0.5rem;
-    cursor: pointer;
-    margin-bottom: 1rem;
-    display: block;
-    margin-left: auto;
-  }
-  .bingo-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 10px;
-    max-width: 600px;
-    margin: 0 auto;
-  }
-  .bingo-cell {
-    background: #74b9ff;
-    color: white;
-    padding: 1rem;
-    text-align: center;
-    border-radius: 10px;
-    user-select: none;
-    cursor: pointer;
-    font-weight: bold;
-    transition: background-color 0.3s ease;
-  }
-  .bingo-cell.marked {
-    background-color: #0984e3;
-    text-decoration: line-through;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <title>Bingo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom right, #bbdefb, #e3f2fd);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .login-box, .bingo-box {
+      background-color: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      width: 320px;
+      display: none;
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .active {
+      display: block;
+    }
+    h1, h2 {
+      text-align: center;
+      color: #1976d2;
+    }
+    input, button {
+      width: 100%;
+      margin-top: 1rem;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 0.5rem;
+    }
+    button {
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #1565c0;
+    }
+    .bingo-card {
+      display: grid;
+      grid-template-columns: repeat(5, 60px);
+      grid-gap: 10px;
+      justify-content: center;
+      margin: 1rem 0;
+    }
+    .cell {
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 15px;
+      height: 60px;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.3s;
+    }
+    .cell.checked {
+      background-color: #90caf9;
+    }
+    .message {
+      margin-top: 1rem;
+      color: green;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
+  <div class="login-box active" id="loginBox">
+    <h2>Inloggen</h2>
+    <input type="text" id="loginUsername" placeholder="Gebruikersnaam" />
+    <input type="password" id="loginPassword" placeholder="Wachtwoord" />
+    <button onclick="login()">Inloggen</button>
+  </div>
 
-<script>
-  // Check login (niet dev)
-  const loggedUser = localStorage.getItem('loggedInUser');
-  if (!loggedUser || loggedUser === 'dev') {
-    window.location.href = 'index.html';
-  }
-</script>
+  <div class="bingo-box" id="bingoBox">
+    <h1>Jouw Bingo Kaart</h1>
+    <div class="bingo-card" id="bingoCard"></div>
+    <button id="saveBtn" onclick="saveCard()" disabled>Opslaan</button>
+    <div class="message" id="message"></div>
+  </div>
 
-<h1>Welkom bij Bingo, <span id="usernameDisplay"></span>!</h1>
-<button id="logoutBtn">Uitloggen</button>
+  <script>
+    const GITHUB_TOKEN = "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";
+    const repoOwner = "Mr-noxius";
+    const repoName = "bingosave";
+    const filePath = "data/bingoUsers.json";
 
-<div class="bingo-grid" id="bingoGrid">
-  <!-- Bingo vakjes worden hier geladen -->
-</div>
+    const loginBox = document.getElementById("loginBox");
+    const bingoBox = document.getElementById("bingoBox");
+    const bingoCardContainer = document.getElementById("bingoCard");
+    const saveBtn = document.getElementById("saveBtn");
+    const message = document.getElementById("message");
 
-<script>
-  const username = localStorage.getItem('loggedInUser');
-  document.getElementById('usernameDisplay').textContent = username;
+    let bingoData = null;
+    let currentUser = sessionStorage.getItem("bingoUser");
+    let fileSha = null;
 
-  const users = JSON.parse(localStorage.getItem('bingoUsers') || '[]');
-  const progress = JSON.parse(localStorage.getItem('bingoProgress') || '{}');
-
-  const userData = users.find(u => u.username === username);
-  if (!userData) {
-    alert("Gebruiker niet gevonden. Je wordt uitgelogd.");
-    localStorage.removeItem('loggedInUser');
-    window.location.href = 'index.html';
-  }
-
-  const bingoGrid = document.getElementById('bingoGrid');
-
-  function renderGrid() {
-    bingoGrid.innerHTML = '';
-    userData.kaart.forEach((tekst, idx) => {
-      const cell = document.createElement('div');
-      cell.className = 'bingo-cell';
-      cell.textContent = tekst;
-      if(progress[username]?.includes(idx)) {
-        cell.classList.add('marked');
+    window.onload = () => {
+      if (currentUser) {
+        showBingo();
       }
-      cell.onclick = () => toggleMark(idx, cell);
-      bingoGrid.appendChild(cell);
-    });
-  }
+    };
 
-  function toggleMark(idx, cell) {
-    progress[username] = progress[username] || [];
-    const i = progress[username].indexOf(idx);
-    if (i === -1) {
-      progress[username].push(idx);
-      cell.classList.add('marked');
-    } else {
-      progress[username].splice(i, 1);
-      cell.classList.remove('marked');
+    async function login() {
+      const username = document.getElementById("loginUsername").value.trim();
+      const password = document.getElementById("loginPassword").value;
+
+      if (!username || !password) return alert("Vul gebruikersnaam en wachtwoord in.");
+
+      const data = await fetchUsers();
+      const found = data.users.find(u => u.username === username && u.password === password);
+      if (!found) return alert("Onjuiste gebruikersnaam of wachtwoord.");
+
+      sessionStorage.setItem("bingoUser", username);
+      currentUser = username;
+      showBingo();
     }
-    localStorage.setItem('bingoProgress', JSON.stringify(progress));
-  }
 
-  renderGrid();
+    async function fetchUsers() {
+      const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
 
-  document.getElementById('logoutBtn').onclick = () => {
-    localStorage.removeItem('loggedInUser');
-    window.location.href = 'index.html';
-  }
-</script>
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          Accept: "application/vnd.github.v3+json"
+        }
+      });
 
+      const data = await res.json();
+      fileSha = data.sha;
+      const content = atob(data.content.replace(/\n/g, ""));
+      return JSON.parse(content);
+    }
+
+    function renderBingoCard(card, progress) {
+      bingoCardContainer.innerHTML = "";
+      card.forEach((vak, i) => {
+        const div = document.createElement("div");
+        div.className = "cell";
+        div.textContent = vak;
+        if (progress.includes(i.toString())) div.classList.add("checked");
+
+        div.onclick = () => {
+          div.classList.toggle("checked");
+          saveBtn.disabled = false;
+        };
+
+        bingoCardContainer.appendChild(div);
+      });
+    }
+
+    async function showBingo() {
+      loginBox.classList.remove("active");
+      bingoBox.classList.add("active");
+
+      bingoData = await fetchUsers();
+      const user = bingoData.users.find(u => u.username === currentUser);
+      const progressData = bingoData.progress || {};
+      const progress = progressData[currentUser] || [];
+
+      if (!user || !user.kaart) {
+        alert("Geen bingo kaart gevonden.");
+        sessionStorage.removeItem("bingoUser");
+        location.reload();
+        return;
+      }
+
+      renderBingoCard(user.kaart, progress);
+    }
+
+    async function saveCard() {
+      const boxes = document.querySelectorAll(".cell");
+      const progress = [];
+      boxes.forEach((box, i) => {
+        if (box.classList.contains("checked")) progress.push(i.toString());
+      });
+
+      bingoData.progress[currentUser] = progress;
+      const updatedContent = btoa(unescape(encodeURIComponent(JSON.stringify(bingoData, null, 2))));
+
+      const res = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          Accept: "application/vnd.github.v3+json"
+        },
+        body: JSON.stringify({
+          message: `Update progress ${currentUser}`,
+          content: updatedContent,
+          sha: fileSha
+        })
+      });
+
+      if (res.ok) {
+        message.textContent = "Bingo kaart succesvol opgeslagen!";
+        saveBtn.disabled = true;
+      } else {
+        const error = await res.json();
+        message.textContent = "Fout bij opslaan: " + error.message;
+      }
+    }
+  </script>
 </body>
 </html>
