@@ -2,9 +2,9 @@ async function handleLogin() {
   const username = document.getElementById("username").value;
   const password = document.getElementById("password").value;
   
-  const res = await fetch("https://api.github.com/repos/<YOUR_USERNAME>/<YOUR_REPO>/contents/accounts.json", {
+  const res = await fetch("https://api.github.com/repos/Mr-noxius/bingosavefiles/contents/accounts.json", {
     headers: {
-      Authorization: "token <YOUR_GITHUB_TOKEN>"
+      Authorization: "token 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"
     }
   });
   
