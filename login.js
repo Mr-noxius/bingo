@@ -9,7 +9,8 @@ async function handleLogin() {
   });
   
   const data = await res.json();
-  const accounts = JSON.parse(atob(data.content));
+  const decodedContent = atob(data.content.replace(/\n/g, ""));
+  const accounts = JSON.parse(decodedContent);
   
   const found = accounts.find(acc => acc.username === username && acc.password === password);
   if (found) {
