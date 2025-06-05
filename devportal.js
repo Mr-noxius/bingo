@@ -1,6 +1,6 @@
 const GITHUB_USER = "Mr-noxius";
 const GITHUB_REPO = "bingosavefiles";
-const GITHUB_TOKEN = "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";
+const GITHUB_TOKEN = "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";
 const API_BASE = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents`;
 
 let accounts = [];
