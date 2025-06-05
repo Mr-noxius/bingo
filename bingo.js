@@ -31,16 +31,16 @@ async function saveToGitHub() {
   
   const getRes = await fetch(`https://api.github.com/repos/<YOUR_USERNAME>/<YOUR_REPO>/contents/${path}`, {
     headers: {
-      Authorization: "token <YOUR_GITHUB_TOKEN>"
+      Authorization: "token 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"
     }
   });
   
   const sha = getRes.ok ? (await getRes.json()).sha : undefined;
   
-  await fetch(`https://api.github.com/repos/<YOUR_USERNAME>/<YOUR_REPO>/contents/${path}`, {
+  await fetch(`https://api.github.com/repos/Mr-noxius/bingosavefiles/contents/${path}`, {
     method: "PUT",
     headers: {
-      Authorization: "token <YOUR_GITHUB_TOKEN>"
+      Authorization: "token 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"
     },
     body: JSON.stringify({
       message: `Update bingo kaart voor ${user}`,
