@@ -14,7 +14,11 @@ async function handleLogin() {
   const found = accounts.find(acc => acc.username === username && acc.password === password);
   if (found) {
     localStorage.setItem("user", username);
-    window.location.href = "bingo.html";
+    if (username === "dev") { 
+      window.location.href = "devportal.html";
+    } else {
+      window.location.href = "bingo.html";
+    }
   } else {
     alert("Ongeldige gebruikersnaam of wachtwoord");
   }
