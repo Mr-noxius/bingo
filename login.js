@@ -4,7 +4,7 @@ async function handleLogin() {
   
   const res = await fetch("https://api.github.com/repos/Mr-noxius/bingosavefiles/contents/accounts.json", {
     headers: {
-      Authorization: "token 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"
+      Authorization: "token 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"
     }
   });
   
