@@ -29,9 +29,9 @@ renderGrid();
 async function saveToGitHub() {
   const path = `bingo-cards/${user}.json`;
   
-  const getRes = await fetch(`https://api.github.com/repos/<YOUR_USERNAME>/<YOUR_REPO>/contents/${path}`, {
+  const getRes = await fetch(`https://api.github.com/repos/Mr-noxius/bingosavefiles/contents/${path}`, {
     headers: {
-      Authorization: "token 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"
+      Authorization: "token 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"
     }
   });
   
@@ -40,7 +40,7 @@ async function saveToGitHub() {
   await fetch(`https://api.github.com/repos/Mr-noxius/bingosavefiles/contents/${path}`, {
     method: "PUT",
     headers: {
-      Authorization: "token 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"
+      Authorization: "token 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"
     },
     body: JSON.stringify({
       message: `Update bingo kaart voor ${user}`,
